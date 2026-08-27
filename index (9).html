@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Odyssey Tech - Secure Portal</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        :root { --odyssey-blue: #004a99; --odyssey-dark: #121212; --accent: #ff6700; --bg: #f8f9fa; }
+        body { background-color: var(--bg); font-family: 'Segoe UI', sans-serif; }
+        
+        /* Login UI Upgraded */
+        #loginPage { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--odyssey-blue); padding: 20px; }
+        .login-card { width: 100%; max-width: 400px; border-radius: 25px; border: none; box-shadow: 0 15px 35px rgba(0,0,0,0.2); background: white; padding: 30px; }
+        
+        .forget-link { font-size: 0.85rem; color: #666; text-decoration: none; display: block; margin-top: 15px; transition: 0.3s; }
+        .forget-link:hover { color: var(--odyssey-blue); }
+
+        .navbar-custom { background: var(--odyssey-dark); color: white; padding: 12px 20px; border-bottom: 4px solid var(--accent); position: sticky; top: 0; z-index: 1050; }
+        .admin-panel-card { background: #ffffff; border-radius: 20px; border: 2px solid var(--odyssey-blue); overflow: hidden; display: none; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .admin-header { background: var(--odyssey-blue); color: white; padding: 10px 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        
+        .stat-card { border: none; border-radius: 18px; color: white; padding: 20px; }
+        .bg-gradient-blue { background: linear-gradient(135deg, #004a99, #007bff); }
+        .bg-gradient-green { background: linear-gradient(135deg, #1e7e34, #28a745); }
+        .bg-gradient-red { background: linear-gradient(135deg, #bd2130, #dc3545); }
+        .bg-gradient-dark { background: linear-gradient(135deg, #212529, #343a40); }
+
+        .section-box { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .form-control { border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid #dee2e6; }
+        .btn-custom { border-radius: 12px; padding: 12px; font-weight: bold; border: none; width: 100%; }
+        
+        .user-tag { background: #e9ecef; border-radius: 10px; padding: 8px 12px; display: inline-flex; align-items: center; gap: 8px; margin: 4px; font-size: 0.9rem; }
+        .del-user { color: #dc3545; cursor: pointer; font-weight: bold; }
+        .footer-credit { text-align: center; padding: 25px; font-size: 0.85rem; color: #6c757d; }
+    </style>
+</head>
+<body>
+
+<div id="loginPage">
+    <div class="login-card text-center">
+        <h2 class="fw-bold mb-1" style="color: var(--odyssey-blue);">ODYSSEY</h2>
+        <p class="text-muted small mb-4">Service Management Portal</p>
+        
+        <input type="password" id="passInput" class="form-control text-center" placeholder="Enter Access Password">
+        <button onclick="handleLogin()" class="btn btn-custom btn-primary shadow-sm">Unlock System</button>
+        
+        <a href="https://wa.me/9601490599?text=Hello%20Admin,%20main%20Odyssey%20Tech%20se%20apna%20password%20bhul%20gaya%20hoon." 
+           target="_blank" class="forget-link">
+           Forgot Password? <span style="color:var(--odyssey-blue); font-weight:600;">Contact Admin</span>
+        </a>
+    </div>
+</div>
+
+<div id="mainApp" style="display:none;">
+    <nav class="navbar-custom d-flex justify-content-between align-items-center">
+        <div class="fw-bold h5 mb-0">ODYSSEY TECH</div>
+        <button onclick="logout()" class="btn btn-sm btn-outline-light">Logout</button>
+    </nav>
+
+    <div class="container-fluid mt-3 pb-5">
+        
+        <div id="adminPanel" class="admin-panel-card shadow">
+            <div class="admin-header">
+                <span>⚙️ ADMIN CONTROL CENTER</span>
+                <span class="badge bg-warning text-dark">Master Access</span>
+            </div>
+            <div class="p-3">
+                <div class="row g-4">
+                    <div class="col-md-6 border-end">
+                        <h6 class="fw-bold text-primary mb-3">Add New Engineer</h6>
+                        <div class="row g-2">
+                            <div class="col-6"><input type="text" id="new_name" class="form-control" placeholder="Name"></div>
+                            <div class="col-6"><input type="text" id="new_pass" class="form-control" placeholder="Password"></div>
+                        </div>
+                        <button onclick="addEngineer()" class="btn btn-primary btn-sm w-100 mb-3">Register</button>
+                        <p class="small fw-bold text-muted mb-2">Active Engineers (Passwords in brackets):</p>
+                        <div id="engList" class="d-flex flex-wrap"></div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-success mb-3">Archive & Export</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-8">
+                                <input type="date" id="historyDate" class="form-control">
+                            </div>
+                            <div class="col-4 d-flex">
+                                <button onclick="changeDate()" class="btn btn-success w-100">Load</button>
+                            </div>
+                        </div>
+                        <button onclick="exportToExcel()" class="btn btn-outline-success btn-sm w-100">📥 Download Excel Sheet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="adminDashboard" class="row g-2 mb-4" style="display:none;">
+            <div class="col-6 col-md-3"><div class="stat-card bg-gradient-blue shadow-sm"><h6>Calls</h6><h2 id="statCalls">0</h2></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card bg-gradient-green shadow-sm"><h6>Cash</h6><h2 id="statColl">₹0</h2></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card bg-gradient-red shadow-sm"><h6>Exp.</h6><h2 id="statExp">₹0</h2></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card bg-gradient-dark shadow-sm"><h6>Net</h6><h2 id="statProfit">₹0</h2></div></div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="section-box mb-3">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2">User: <span id="activeEng" class="text-primary"></span></h5>
+                    <input type="text" id="job_id" class="form-control" placeholder="Job Card No.">
+                    <input type="text" id="issue" class="form-control" placeholder="Problem">
+                    <textarea id="solution" class="form-control" rows="2" placeholder="Action Taken"></textarea>
+                    
+                    <div class="row g-2">
+                        <div class="col-7"><input type="number" id="call_amt" class="form-control" placeholder="Amount ₹"></div>
+                        <div class="col-5">
+                            <select id="pay_mode" class="form-select">
+                                <option value="Cash">Cash</option>
+                                <option value="UPI">UPI</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="submitEntry()" class="btn btn-custom btn-primary shadow mt-2">Save Call</button>
+                    
+                    <div class="mt-4 pt-3 border-top">
+                        <h6 class="text-danger fw-bold small">Log Expense</h6>
+                        <div class="row g-2">
+                            <div class="col-7"><input type="text" id="exp_reason" class="form-control" placeholder="Petrol/Conv."></div>
+                            <div class="col-5"><input type="number" id="exp_amt" class="form-control" placeholder="₹"></div>
+                        </div>
+                        <button onclick="submitExpense()" class="btn btn-sm btn-outline-danger w-100">Add Expense</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="section-box">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0">History: <span id="viewingDate" class="text-danger"></span></h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="reportTable" class="table table-hover align-middle" style="font-size: 0.85rem;">
+                            <thead class="table-light">
+                                <tr><th>Engineer</th><th>Job/Reason</th><th>Amount</th><th>Action</th></tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer-credit">
+        &copy; 2024 Odyssey Technologies | Developed by Kaif Khan
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBQ893qaUY52PE2-gQGDPV87RI4h5pssqk",
+        authDomain: "xiaomi-service-8f70a.firebaseapp.com",
+        databaseURL: "https://xiaomi-service-8f70a-default-rtdb.firebaseio.com",
+        projectId: "xiaomi-service-8f70a",
+        storageBucket: "xiaomi-service-8f70a.firebasestorage.app",
+        messagingSenderId: "349726895573",
+        appId: "1:349726895573:web:d8d7938f94980207b6615c"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let currentViewDate = new Date().toISOString().split('T')[0];
+    let loggedUser = null;
+
+    window.onload = function() {
+        const saved = localStorage.getItem('odyssey_pro_session');
+        if(saved) setupPortal(JSON.parse(saved));
+        document.getElementById('historyDate').value = currentViewDate;
+    };
+
+    async function handleLogin() {
+        const pass = document.getElementById('passInput').value;
+        if(pass === 'admin786') return loginSuccess({name: "Admin", role: "Admin"});
+        
+        const snap = await db.ref('settings/engineers').once('value');
+        const engs = snap.val();
+        let found = null;
+        if(engs) Object.values(engs).forEach(e => { if(e.pass === pass) found = e; });
+        
+        if(found) loginSuccess({name: found.name, role: "Engineer"});
+        else alert("Galti Password!");
+    }
+
+    function loginSuccess(user) {
+        localStorage.setItem('odyssey_pro_session', JSON.stringify(user));
+        setupPortal(user);
+    }
+
+    function setupPortal(user) {
+        loggedUser = user;
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        document.getElementById('activeEng').innerText = user.name;
+        if(user.role === 'Admin') {
+            document.getElementById('adminPanel').style.display = 'block';
+            document.getElementById('adminDashboard').style.display = 'flex';
+            loadEngineerList();
+        }
+        syncData();
+    }
+
+    function addEngineer() {
+        const name = document.getElementById('new_name').value;
+        const pass = document.getElementById('new_pass').value;
+        if(!name || !pass) return;
+        db.ref('settings/engineers').push({ name, pass });
+        document.getElementById('new_name').value = '';
+        document.getElementById('new_pass').value = '';
+    }
+
+    function loadEngineerList() {
+        db.ref('settings/engineers').on('value', snap => {
+            const list = document.getElementById('engList');
+            list.innerHTML = "";
+            snap.forEach(child => {
+                const e = child.val();
+                list.innerHTML += `<div class="user-tag">
+                    <b>${e.name}</b> <small>(${e.pass})</small>
+                    <span class="del-user" onclick="removeEng('${child.key}')">×</span>
+                </div>`;
+            });
+        });
+    }
+
+    function removeEng(key) { if(confirm("Remove?")) db.ref('settings/engineers/'+key).remove(); }
+    function changeDate() { currentViewDate = document.getElementById('historyDate').value; syncData(); }
+
+    function submitEntry() {
+        const id = document.getElementById('job_id').value;
+        const amt = parseFloat(document.getElementById('call_amt').value) || 0;
+        if(!id || !amt) return alert("Missing Info!");
+        const today = new Date().toISOString().split('T')[0];
+        db.ref(`reports/${today}/data`).push({
+            type: 'call', engineer: loggedUser.name, job_id: id,
+            iss: document.getElementById('issue').value,
+            amt: amt, mode: document.getElementById('pay_mode').value,
+            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+        });
+        alert("Saved!");
+    }
+
+    function submitExpense() {
+        const r = document.getElementById('exp_reason').value;
+        const a = parseFloat(document.getElementById('exp_amt').value) || 0;
+        const today = new Date().toISOString().split('T')[0];
+        db.ref(`reports/${today}/data`).push({
+            type: 'expense', engineer: loggedUser.name, reason: r, amt: a,
+            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+        });
+        alert("Expense Added!");
+    }
+
+    function syncData() {
+        document.getElementById('viewingDate').innerText = currentViewDate;
+        db.ref(`reports/${currentViewDate}/data`).on('value', (snap) => {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
+            let tC = 0, tE = 0, count = 0;
+            snap.forEach((child) => {
+                const d = child.val();
+                const isCall = d.type === 'call';
+                if(isCall) { tC += d.amt; count++; } else { tE += d.amt; }
+                tbody.innerHTML += `<tr class="${isCall ? '' : 'table-danger'}">
+                    <td><b>${d.engineer}</b><br><small>${d.time}</small></td>
+                    <td>${isCall ? 'ID: '+d.job_id : d.reason}</td>
+                    <td class="fw-bold text-${isCall ? 'success' : 'danger'}">${isCall ? '₹'+d.amt : '-₹'+d.amt}</td>
+                    <td>${loggedUser.role === 'Admin' ? `<button onclick="delItem('${child.key}')" class="btn btn-sm btn-link text-danger">Del</button>` : '-'}</td>
+                </tr>`;
+            });
+            document.getElementById('statCalls').innerText = count;
+            document.getElementById('statColl').innerText = "₹" + tC;
+            document.getElementById('statExp').innerText = "₹" + tE;
+            document.getElementById('statProfit').innerText = "₹" + (tC - tE);
+        });
+    }
+
+    function delItem(key) { if(confirm("Delete?")) db.ref(`reports/${currentViewDate}/data/${key}`).remove(); }
+    function exportToExcel() {
+        const table = document.getElementById("reportTable");
+        const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
+        XLSX.writeFile(wb, `Report_${currentViewDate}.xlsx`);
+    }
+    function logout() { localStorage.removeItem('odyssey_pro_session'); location.reload(); }
+</script>
+</body>
+</html>
